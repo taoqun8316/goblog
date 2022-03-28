@@ -9,32 +9,35 @@ import (
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, "<h1>"+r.URL.Path+"</h1>")
+	fmt.Fprint(w, "欢迎来到go blog")
 }
 
 func aboutHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, "<h1>"+r.URL.Path+"</h1>")
+	fmt.Fprint(w, "此博客是用以记录编程笔记，如您有反馈或建议，请联系 "+
+		"<a href=\"mailto:summer@example.com\">summer@example.com</a>")
 }
 
 func articlesShowHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, "<h1>"+r.URL.Path+"</h1>")
+	vars := mux.Vars(r)
+	id := vars["id"]
+	fmt.Fprint(w, "<h1>搜索文章id为："+id+"</h1>")
 }
 
 func articlesIndexHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, "<h1>"+r.URL.Path+"</h1>")
+	fmt.Fprint(w, "访问文章列表")
 }
 
 func articlesStoreHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, "<h1>"+r.URL.Path+"</h1>")
+	fmt.Fprint(w, "创建新的文章")
 }
 
 func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, "<h1>"+r.URL.Path+"</h1>")
+	w.WriteHeader(http.StatusNotFound)
+	fmt.Fprint(w, "<h1>页面未找到</h1>")
+
 }
 
 func main() {
