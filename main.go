@@ -55,8 +55,9 @@ func articlesIndexHandler(w http.ResponseWriter, r *http.Request) {
 	err = rows.Err()
 	checkError(err)
 
-	//funcMap := template.FuncMap{"Link": Link}
-	tmpl, err := template.ParseFiles("resources/views/articles/index.gohtml")
+	tmpl, err := template.New("index.gohtml").Funcs(template.FuncMap{
+		"Link": Article.Link,
+	}).ParseFiles("resources/views/articles/index.gohtml")
 	checkError(err)
 
 	err = tmpl.Execute(w, articles)
@@ -105,7 +106,7 @@ func articlesStoreHandler(w http.ResponseWriter, r *http.Request) {
 			Errors: errors,
 		}
 
-		tmpl, err := template.ParseFiles("resources/views/articles/create.gohtml")
+		tmpl, err := template.New("index.gohtml").Funcs(template.FuncMap{}).ParseFiles("resources/views/articles/create.gohtml")
 		if err != nil {
 			panic(err)
 		}
@@ -131,7 +132,10 @@ func articlesShowHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprint(w, "500 服务器内部错误")
 		}
 	} else {
-		tmpl, err := template.ParseFiles("resources/views/articles/show.gohtml")
+		tmpl, err := template.New("show.gohtml").Funcs(template.FuncMap{
+			"RouteName2URL": RouteName2URL,
+			"Int64ToString": Int64ToString,
+		}).ParseFiles("resources/views/articles/show.gohtml")
 		checkError(err)
 
 		err = tmpl.Execute(w, article)
@@ -221,10 +225,38 @@ func articlesUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func articlesDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	id := getRouteVariable("id", r)
+	article, err := getArticleByID(id)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprint(w, "404 文章未找到")
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, "500 服务器内部错误")
+		}
+	} else {
+		rowsAffected, err := article.Delete()
+		if err != nil {
+			checkError(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, "500 服务器内部错误")
+		} else {
+			if rowsAffected > 0 {
+				http.Redirect(w, r, "articles.index", http.StatusFound)
+			} else {
+				w.WriteHeader(http.StatusNotFound)
+				fmt.Fprint(w, "404 文章未找到")
+			}
+		}
+	}
+}
+
 func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotFound)
 	fmt.Fprint(w, "<h1>页面未找到</h1>")
-
 }
 
 func forceHTMLMiddleware(next http.Handler) http.Handler {
@@ -255,6 +287,7 @@ func main() {
 	router.HandleFunc("/articles", articlesStoreHandler).Methods("POST").Name("articles.store")
 	router.HandleFunc("/articles/{id:[0-9]+}/edit", articlesEditHandler).Methods("GET").Name("articles.edit")
 	router.HandleFunc("/articles/{id:[0-9]+}", articlesUpdateHandler).Methods("POST").Name("articles.update")
+	router.HandleFunc("/articles/{id:[0-9]+}", articlesDeleteHandler).Methods("GET").Name("articles.delete")
 
 	//中间件
 	router.Use(forceHTMLMiddleware)
@@ -371,4 +404,30 @@ func (a Article) Link() string {
 		return ""
 	}
 	return showURL.String()
+}
+
+func (a Article) Delete() (rowAffect int64, err error) {
+	query := "delete from article where id = ?"
+	affactRows, err := db.Exec(query, a.ID)
+	if err != nil {
+		checkError(err)
+	}
+	if n, _ := affactRows.RowsAffected(); n > 0 {
+		return n, nil
+	}
+	return 0, err
+}
+
+func RouteName2URL(routName string, pairs ...string) string {
+	url, err := router.Get(routName).URL(pairs...)
+	if err != nil {
+		checkError(err)
+		return ""
+	} else {
+		return url.String()
+	}
+}
+
+func Int64ToString(num int64) string {
+	return strconv.FormatInt(num, 10)
 }
