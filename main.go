@@ -3,12 +3,20 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/gorilla/mux"
 )
 
 var router = mux.NewRouter()
+
+type ArticlesFormData struct {
+	Title, Body string
+	URL         *url.URL
+	Errors      map[string]string
+}
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "欢迎来到go blog")
@@ -41,17 +49,43 @@ func articlesCreateHandler(w http.ResponseWriter, r *http.Request) {
 	`
 
 	storeURL, _ := router.Get("articles.store").URL()
-	fmt.Fprint(w, html, storeURL)
+	fmt.Fprintf(w, html, storeURL)
+}
+
+func articlesStoreHandler(w http.ResponseWriter, r *http.Request) {
+	title := r.PostFormValue("title")
+	body := r.PostFormValue("body")
+
+	errors := make(map[string]string)
+
+	if title == "" {
+		errors["title"] = "标题不能为空"
+	} else if utf8.RuneCountInString(title) < 3 || utf8.RuneCountInString(title) > 40 {
+		errors["title"] = "标题长度需介于 3-40"
+	}
+
+	if body == "" {
+		errors["body"] = "内容不能为空"
+	} else if len(body) < 10 {
+		errors["body"] = "内容长度需大于或等于 10 个字节"
+	}
+
+	// 检查是否有错误
+	if len(errors) == 0 {
+		fmt.Fprint(w, "验证通过!<br>")
+		fmt.Fprintf(w, "title 的值为: %v <br>", title)
+		fmt.Fprintf(w, "title 的长度为: %v <br>", utf8.RuneCountInString(title))
+		fmt.Fprintf(w, "body 的值为: %v <br>", body)
+		fmt.Fprintf(w, "body 的长度为: %v <br>", utf8.RuneCountInString(body))
+	} else {
+		fmt.Fprintf(w, "有错误发生，errors 的值为: %v <br>", errors)
+	}
 }
 
 func articlesShowHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 	fmt.Fprint(w, "<h1>搜索文章id为："+id+"</h1>")
-}
-
-func articlesStoreHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "创建新的文章")
 }
 
 func notFoundHandler(w http.ResponseWriter, r *http.Request) {
