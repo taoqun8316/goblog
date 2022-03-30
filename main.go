@@ -55,7 +55,7 @@ func articlesIndexHandler(w http.ResponseWriter, r *http.Request) {
 	err = rows.Err()
 	checkError(err)
 
-	funcMap := template.FuncMap{"Link": Link}
+	//funcMap := template.FuncMap{"Link": Link}
 	tmpl, err := template.ParseFiles("resources/views/articles/index.gohtml")
 	checkError(err)
 
@@ -79,28 +79,6 @@ func articlesCreateHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-}
-
-func articlesCreateHandler(w http.ResponseWriter, r *http.Request) {
-	html := `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <title>创建文章 —— 我的技术博客</title>
-</head>
-<body>
-    <form action="%s" method="post">
-        <p><input type="text" name="title"></p>
-        <p><textarea name="body" cols="30" rows="10"></textarea></p>
-        <p><button type="submit">提交</button></p>
-    </form>
-</body>
-</html>
-`
-
-	storeURL, _ := router.Get("articles.store").URL()
-	fmt.Fprintf(w, html, storeURL)
-
 }
 
 func articlesStoreHandler(w http.ResponseWriter, r *http.Request) {
@@ -290,8 +268,8 @@ func main() {
 func initDB() {
 	var err error
 	config := mysql.Config{
-		User:                 "goblog",
-		Passwd:               "root",
+		User:                 "root",
+		Passwd:               "taoqun8316",
 		Addr:                 "127.0.0.1:3306",
 		Net:                  "tcp",
 		DBName:               "goblog",
