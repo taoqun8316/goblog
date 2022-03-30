@@ -130,6 +130,9 @@ func removeTrailingSlash(next http.Handler) http.Handler {
 }
 
 func main() {
+	initDB()
+	createTables()
+
 	router.HandleFunc("/", homeHandler).Methods("GET").Name("home")
 	router.HandleFunc("/about", aboutHandler).Methods("GET").Name("about")
 	router.HandleFunc("/articles/{id:[0-9]+}", articlesShowHandler).Methods("GET").Name("articles.show")
@@ -149,7 +152,7 @@ func main() {
 func initDB() {
 	var err error
 	config := mysql.Config{
-		User:                 "root",
+		User:                 "goblog",
 		Passwd:               "root",
 		Addr:                 "127.0.0.1:3306",
 		Net:                  "tcp",
@@ -157,7 +160,7 @@ func initDB() {
 		AllowNativePasswords: true,
 	}
 
-	db, err := sql.Open("mysql", config.FormatDSN())
+	db, err = sql.Open("mysql", config.FormatDSN())
 	checkError(err)
 
 	// 设置最大连接数
@@ -169,6 +172,16 @@ func initDB() {
 
 	// 尝试连接，失败会报错
 	err = db.Ping()
+	checkError(err)
+}
+
+func createTables() {
+	createArticlesSQL := `CREATE TABLE IF NOT EXISTS articles(
+		id bigint(20) PRIMARY KEY AUTO_INCREMENT NOT NULL,
+		title varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+		body longtext COLLATE utf8mb4_unicode_ci
+	); `
+	_, err := db.Exec(createArticlesSQL)
 	checkError(err)
 }
 
