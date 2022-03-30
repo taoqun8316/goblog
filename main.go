@@ -40,7 +40,27 @@ func aboutHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func articlesIndexHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "文章列表")
+	rows, err := db.Query("select * from articles")
+	checkError(err)
+
+	var articles []Article
+	for rows.Next() {
+		var article Article
+		err := rows.Scan(&article.ID, &article.Title, &article.Body)
+		checkError(err)
+
+		articles = append(articles, article)
+	}
+
+	err = rows.Err()
+	checkError(err)
+
+	funcMap := template.FuncMap{"Link": Link}
+	tmpl, err := template.ParseFiles("resources/views/articles/index.gohtml")
+	checkError(err)
+
+	err = tmpl.Execute(w, articles)
+	checkError(err)
 }
 
 func articlesCreateHandler(w http.ResponseWriter, r *http.Request) {
@@ -342,4 +362,13 @@ func validateArticleFormData(title string, body string) map[string]string {
 	}
 
 	return errors
+}
+
+func (a Article) Link() string {
+	showURL, err := router.Get("article.show").URL("id", strconv.FormatInt(a.ID, 10))
+	if err != nil {
+		checkError(err)
+		return ""
+	}
+	return showURL.String()
 }
