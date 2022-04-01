@@ -11,10 +11,10 @@ import (
 	"unicode/utf8"
 
 	"github.com/gorilla/mux"
+	"github.com/taoqun8316/goblog/bootstrap"
 	"github.com/taoqun8316/goblog/pkg/database"
 	"github.com/taoqun8316/goblog/pkg/logger"
 	"github.com/taoqun8316/goblog/pkg/route"
-	"github.com/taoqun8316/goblog/pkg/types"
 )
 
 var router *mux.Router
@@ -29,15 +29,6 @@ type ArticlesFormData struct {
 type Article struct {
 	Title, Body string
 	ID          int64
-}
-
-func homeHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "欢迎来到go blog")
-}
-
-func aboutHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "此博客是用以记录编程笔记，如您有反馈或建议，请联系 "+
-		"<a href=\"mailto:summer@example.com\">summer@example.com</a>")
 }
 
 func articlesIndexHandler(w http.ResponseWriter, r *http.Request) {
@@ -117,33 +108,8 @@ func articlesStoreHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func articlesShowHandler(w http.ResponseWriter, r *http.Request) {
-	id := route.GetRouteVariable("id", r)
-	article, err := getArticleByID(id)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprint(w, "404 文章未找到")
-		} else {
-			logger.LogError(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint(w, "500 服务器内部错误")
-		}
-	} else {
-		tmpl, err := template.New("show.gohtml").Funcs(template.FuncMap{
-			"RouteName2URL": route.Name2URL,
-			"Int64ToString": types.Int64ToString,
-		}).ParseFiles("resources/views/articles/show.gohtml")
-		logger.LogError(err)
-
-		err = tmpl.Execute(w, article)
-		logger.LogError(err)
-	}
-}
-
 func articlesEditHandler(w http.ResponseWriter, r *http.Request) {
-	id := route.GetRouteVariable("id", r)
+	id := GetRouteVariable("id", r)
 	article, err := getArticleByID(id)
 
 	if err != nil {
@@ -173,7 +139,7 @@ func articlesEditHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func articlesUpdateHandler(w http.ResponseWriter, r *http.Request) {
-	id := route.GetRouteVariable("id", r)
+	id := GetRouteVariable("id", r)
 	_, err := getArticleByID(id)
 
 	if err != nil {
@@ -225,7 +191,7 @@ func articlesUpdateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func articlesDeleteHandler(w http.ResponseWriter, r *http.Request) {
-	id := route.GetRouteVariable("id", r)
+	id := GetRouteVariable("id", r)
 	article, err := getArticleByID(id)
 
 	if err != nil {
@@ -253,11 +219,6 @@ func articlesDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func notFoundHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotFound)
-	fmt.Fprint(w, "<h1>页面未找到</h1>")
-}
-
 func forceHTMLMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -275,14 +236,10 @@ func removeTrailingSlash(next http.Handler) http.Handler {
 }
 
 func main() {
-	route.Initiallize()
-	router = &route.Router
+	router = bootstrap.SetupRoute()
 	database.Initiallize()
 	db = database.DB
 
-	router.HandleFunc("/", homeHandler).Methods("GET").Name("home")
-	router.HandleFunc("/about", aboutHandler).Methods("GET").Name("about")
-	router.HandleFunc("/articles/{id:[0-9]+}", articlesShowHandler).Methods("GET").Name("articles.show")
 	router.HandleFunc("/articles", articlesIndexHandler).Methods("GET").Name("articles.index")
 	router.HandleFunc("/articles/create", articlesCreateHandler).Methods("GET").Name("articles.create")
 	router.HandleFunc("/articles", articlesStoreHandler).Methods("POST").Name("articles.store")
@@ -292,9 +249,6 @@ func main() {
 
 	//中间件
 	router.Use(forceHTMLMiddleware)
-
-	//404
-	router.NotFoundHandler = http.HandlerFunc(notFoundHandler)
 
 	http.ListenAndServe(":3000", removeTrailingSlash(router))
 }
@@ -331,7 +285,10 @@ func getArticleByID(id string) (Article, error) {
 	err := db.QueryRow(query, id).Scan(&article.ID, &article.Title, &article.Body)
 	return article, err
 }
-
+func GetRouteVariable(parameterName string, r *http.Request) string {
+	vars := mux.Vars(r)
+	return vars[parameterName]
+}
 func validateArticleFormData(title string, body string) map[string]string {
 	errors := make(map[string]string)
 	// 验证标题
