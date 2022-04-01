@@ -55,9 +55,7 @@ func articlesIndexHandler(w http.ResponseWriter, r *http.Request) {
 	err = rows.Err()
 	checkError(err)
 
-	tmpl, err := template.New("index.gohtml").Funcs(template.FuncMap{
-		"Link": Article.Link,
-	}).ParseFiles("resources/views/articles/index.gohtml")
+	tmpl, err := template.New("index.gohtml").Funcs(template.FuncMap{}).ParseFiles("resources/views/articles/index.gohtml")
 	checkError(err)
 
 	err = tmpl.Execute(w, articles)
@@ -245,7 +243,7 @@ func articlesDeleteHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprint(w, "500 服务器内部错误")
 		} else {
 			if rowsAffected > 0 {
-				http.Redirect(w, r, "articles.index", http.StatusFound)
+				http.Redirect(w, r, RouteName2URL("articles.index"), http.StatusFound)
 			} else {
 				w.WriteHeader(http.StatusNotFound)
 				fmt.Fprint(w, "404 文章未找到")
@@ -287,7 +285,7 @@ func main() {
 	router.HandleFunc("/articles", articlesStoreHandler).Methods("POST").Name("articles.store")
 	router.HandleFunc("/articles/{id:[0-9]+}/edit", articlesEditHandler).Methods("GET").Name("articles.edit")
 	router.HandleFunc("/articles/{id:[0-9]+}", articlesUpdateHandler).Methods("POST").Name("articles.update")
-	router.HandleFunc("/articles/{id:[0-9]+}", articlesDeleteHandler).Methods("GET").Name("articles.delete")
+	router.HandleFunc("/articles/{id:[0-9]+}/delete", articlesDeleteHandler).Methods("POST").Name("articles.delete")
 
 	//中间件
 	router.Use(forceHTMLMiddleware)
@@ -407,7 +405,7 @@ func (a Article) Link() string {
 }
 
 func (a Article) Delete() (rowAffect int64, err error) {
-	query := "delete from article where id = ?"
+	query := "delete from articles where id = ?"
 	affactRows, err := db.Exec(query, a.ID)
 	if err != nil {
 		checkError(err)
