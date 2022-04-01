@@ -104,7 +104,7 @@ func articlesStoreHandler(w http.ResponseWriter, r *http.Request) {
 			Errors: errors,
 		}
 
-		tmpl, err := template.New("index.gohtml").Funcs(template.FuncMap{}).ParseFiles("resources/views/articles/create.gohtml")
+		tmpl, err := template.New("create.gohtml").Funcs(template.FuncMap{}).ParseFiles("resources/views/articles/create.gohtml")
 		if err != nil {
 			panic(err)
 		}
