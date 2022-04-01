@@ -8,12 +8,10 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 	"unicode/utf8"
 
-	"github.com/go-sql-driver/mysql"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
+	"github.com/taoqun8316/goblog/pkg/database"
 	"github.com/taoqun8316/goblog/pkg/logger"
 	"github.com/taoqun8316/goblog/pkg/route"
 	"github.com/taoqun8316/goblog/pkg/types"
@@ -277,10 +275,10 @@ func removeTrailingSlash(next http.Handler) http.Handler {
 }
 
 func main() {
-	initDB()
-	createTables()
 	route.Initiallize()
 	router = &route.Router
+	database.Initiallize()
+	db = database.DB
 
 	router.HandleFunc("/", homeHandler).Methods("GET").Name("home")
 	router.HandleFunc("/about", aboutHandler).Methods("GET").Name("about")
@@ -299,42 +297,6 @@ func main() {
 	router.NotFoundHandler = http.HandlerFunc(notFoundHandler)
 
 	http.ListenAndServe(":3000", removeTrailingSlash(router))
-}
-
-func initDB() {
-	var err error
-	config := mysql.Config{
-		User:                 "root",
-		Passwd:               "taoqun8316",
-		Addr:                 "127.0.0.1:3306",
-		Net:                  "tcp",
-		DBName:               "goblog",
-		AllowNativePasswords: true,
-	}
-
-	db, err = sql.Open("mysql", config.FormatDSN())
-	logger.LogError(err)
-
-	// 设置最大连接数
-	db.SetMaxOpenConns(25)
-	// 设置最大空闲连接数
-	db.SetConnMaxIdleTime(25)
-	// 设置每个链接的过期时间
-	db.SetConnMaxLifetime(5 * time.Minute)
-
-	// 尝试连接，失败会报错
-	err = db.Ping()
-	logger.LogError(err)
-}
-
-func createTables() {
-	createArticlesSQL := `CREATE TABLE IF NOT EXISTS articles(
-		id bigint(20) PRIMARY KEY AUTO_INCREMENT NOT NULL,
-		title varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-		body longtext COLLATE utf8mb4_unicode_ci
-	); `
-	_, err := db.Exec(createArticlesSQL)
-	logger.LogError(err)
 }
 
 func saveArticleToDB(title, body string) (int64, error) {
