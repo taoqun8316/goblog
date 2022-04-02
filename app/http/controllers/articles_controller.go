@@ -1,25 +1,26 @@
 package controllers
 
 import (
-	"database/sql"
 	"fmt"
 	"net/http"
 	"text/template"
 
+	"github.com/taoqun8316/goblog/app/models/article"
 	"github.com/taoqun8316/goblog/pkg/logger"
 	"github.com/taoqun8316/goblog/pkg/route"
 	"github.com/taoqun8316/goblog/pkg/types"
+	"gorm.io/gorm"
 )
 
 type ArticlesController struct {
 }
 
-func Show(w http.ResponseWriter, r *http.Request) {
+func (*ArticlesController) Show(w http.ResponseWriter, r *http.Request) {
 	id := route.GetRouteVariable("id", r)
-	article, err := getArticleByID(id)
+	article, err := article.Get(id)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == gorm.ErrRecordNotFound {
 			w.WriteHeader(http.StatusNotFound)
 			fmt.Fprint(w, "404 文章未找到")
 		} else {
@@ -29,8 +30,8 @@ func Show(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		tmpl, err := template.New("show.gohtml").Funcs(template.FuncMap{
-			"RouteName2URL": route.Name2URL,
-			"Int64ToString": types.Int64ToString,
+			"RouteName2URL":  route.Name2URL,
+			"Uint64ToString": types.Uint64ToString,
 		}).ParseFiles("resources/views/articles/show.gohtml")
 		logger.LogError(err)
 
