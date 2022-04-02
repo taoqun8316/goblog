@@ -6,7 +6,6 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -29,83 +28,6 @@ type ArticlesFormData struct {
 type Article struct {
 	Title, Body string
 	ID          int64
-}
-
-func articlesIndexHandler(w http.ResponseWriter, r *http.Request) {
-	rows, err := db.Query("select * from articles")
-	logger.LogError(err)
-
-	var articles []Article
-	for rows.Next() {
-		var article Article
-		err := rows.Scan(&article.ID, &article.Title, &article.Body)
-		logger.LogError(err)
-
-		articles = append(articles, article)
-	}
-
-	err = rows.Err()
-	logger.LogError(err)
-
-	tmpl, err := template.New("index.gohtml").Funcs(template.FuncMap{}).ParseFiles("resources/views/articles/index.gohtml")
-	logger.LogError(err)
-
-	err = tmpl.Execute(w, articles)
-	logger.LogError(err)
-}
-
-func articlesCreateHandler(w http.ResponseWriter, r *http.Request) {
-	storeURL, _ := router.Get("articles.store").URL()
-	data := ArticlesFormData{
-		Title:  "",
-		Body:   "",
-		URL:    storeURL,
-		Errors: nil,
-	}
-	tmpl, err := template.ParseFiles("resources/views/articles/create.gohtml")
-	if err != nil {
-		panic(err)
-	}
-	err = tmpl.Execute(w, data)
-	if err != nil {
-		panic(err)
-	}
-}
-
-func articlesStoreHandler(w http.ResponseWriter, r *http.Request) {
-	title := r.PostFormValue("title")
-	body := r.PostFormValue("body")
-	errors := validateArticleFormData(title, body)
-
-	// 检查是否有错误
-	if len(errors) == 0 {
-		lastInsetID, err := saveArticleToDB(title, body)
-		if lastInsetID > 0 {
-			fmt.Fprint(w, "插入成功，ID为"+strconv.FormatInt(lastInsetID, 10))
-		} else {
-			logger.LogError(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint(w, "500 服务器内部错误")
-		}
-	} else {
-		storeURL, _ := router.Get("articles.store").URL()
-		data := ArticlesFormData{
-			Title:  title,
-			Body:   body,
-			URL:    storeURL,
-			Errors: errors,
-		}
-
-		tmpl, err := template.New("create.gohtml").Funcs(template.FuncMap{}).ParseFiles("resources/views/articles/create.gohtml")
-		if err != nil {
-			panic(err)
-		}
-
-		err = tmpl.Execute(w, data)
-		if err != nil {
-			panic(err)
-		}
-	}
 }
 
 func articlesEditHandler(w http.ResponseWriter, r *http.Request) {
@@ -136,6 +58,25 @@ func articlesEditHandler(w http.ResponseWriter, r *http.Request) {
 		err = tmpl.Execute(w, data)
 		logger.LogError(err)
 	}
+}
+
+func validateArticleFormData(title string, body string) map[string]string {
+	errors := make(map[string]string)
+	// 验证标题
+	if title == "" {
+		errors["title"] = "标题不能为空"
+	} else if utf8.RuneCountInString(title) < 3 || utf8.RuneCountInString(title) > 40 {
+		errors["title"] = "标题长度需介于 3-40"
+	}
+
+	// 验证内容
+	if body == "" {
+		errors["body"] = "内容不能为空"
+	} else if utf8.RuneCountInString(body) < 10 {
+		errors["body"] = "内容长度需大于或等于 10 个字节"
+	}
+
+	return errors
 }
 
 func articlesUpdateHandler(w http.ResponseWriter, r *http.Request) {
@@ -242,9 +183,6 @@ func main() {
 	db = database.DB
 	bootstrap.SetupDB()
 
-	router.HandleFunc("/articles", articlesIndexHandler).Methods("GET").Name("articles.index")
-	router.HandleFunc("/articles/create", articlesCreateHandler).Methods("GET").Name("articles.create")
-	router.HandleFunc("/articles", articlesStoreHandler).Methods("POST").Name("articles.store")
 	router.HandleFunc("/articles/{id:[0-9]+}/edit", articlesEditHandler).Methods("GET").Name("articles.edit")
 	router.HandleFunc("/articles/{id:[0-9]+}", articlesUpdateHandler).Methods("POST").Name("articles.update")
 	router.HandleFunc("/articles/{id:[0-9]+}/delete", articlesDeleteHandler).Methods("POST").Name("articles.delete")
@@ -287,36 +225,10 @@ func getArticleByID(id string) (Article, error) {
 	err := db.QueryRow(query, id).Scan(&article.ID, &article.Title, &article.Body)
 	return article, err
 }
+
 func GetRouteVariable(parameterName string, r *http.Request) string {
 	vars := mux.Vars(r)
 	return vars[parameterName]
-}
-func validateArticleFormData(title string, body string) map[string]string {
-	errors := make(map[string]string)
-	// 验证标题
-	if title == "" {
-		errors["title"] = "标题不能为空"
-	} else if utf8.RuneCountInString(title) < 3 || utf8.RuneCountInString(title) > 40 {
-		errors["title"] = "标题长度需介于 3-40"
-	}
-
-	// 验证内容
-	if body == "" {
-		errors["body"] = "内容不能为空"
-	} else if utf8.RuneCountInString(body) < 10 {
-		errors["body"] = "内容长度需大于或等于 10 个字节"
-	}
-
-	return errors
-}
-
-func (a Article) Link() string {
-	showURL, err := router.Get("article.show").URL("id", strconv.FormatInt(a.ID, 10))
-	if err != nil {
-		logger.LogError(err)
-		return ""
-	}
-	return showURL.String()
 }
 
 func (a Article) Delete() (rowAffect int64, err error) {

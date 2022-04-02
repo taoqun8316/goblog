@@ -5,6 +5,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/taoqun8316/goblog/pkg/model"
+	"github.com/taoqun8316/goblog/pkg/route"
 	"github.com/taoqun8316/goblog/routes"
 )
 
@@ -12,6 +13,7 @@ import (
 func SetupRoute() *mux.Router {
 	router := mux.NewRouter()
 	routes.RegisterWebRoutes(router)
+	route.SetRoute(router)
 	return router
 }
 
