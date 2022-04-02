@@ -5,18 +5,20 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/taoqun8316/goblog/app/http/controllers"
-	"github.com/taoqun8316/goblog/app/http/middlewares"
 )
 
 func RegisterWebRoutes(r *mux.Router) {
 
-	r.Use(middlewares.ForceHTML)
+	//r.Use(middlewares.ForceHTML)
 
 	pc := new(controllers.PagesController)
 	// 静态页面
 	r.NotFoundHandler = http.HandlerFunc(pc.NotFound)
 	r.HandleFunc("/", pc.Home).Methods("GET").Name("home")
 	r.HandleFunc("/about", pc.About).Methods("GET").Name("about")
+	// 静态资源
+	r.PathPrefix("/css/").Handler(http.FileServer(http.Dir("./public")))
+	r.PathPrefix("/js/").Handler(http.FileServer(http.Dir("./public")))
 
 	// 文章相关页面
 	ac := new(controllers.ArticlesController)
