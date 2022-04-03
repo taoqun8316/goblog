@@ -1,6 +1,7 @@
 package article
 
 import (
+	"github.com/taoqun8316/goblog/app/models"
 	"github.com/taoqun8316/goblog/pkg/logger"
 	"github.com/taoqun8316/goblog/pkg/model"
 	"github.com/taoqun8316/goblog/pkg/route"
@@ -8,7 +9,8 @@ import (
 )
 
 type Article struct {
-	ID    uint64
+	models.BaseModel
+
 	Title string
 	Body  string
 }
@@ -52,7 +54,7 @@ func (article *Article) Delete() (rowsAffected int64, err error) {
 	if err := result.Error; err != nil {
 		return 0, err
 	}
-	return rowsAffected, nil
+	return result.RowsAffected, nil
 }
 
 func (article Article) Link() string {

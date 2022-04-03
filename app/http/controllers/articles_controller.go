@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"text/template"
 	"unicode/utf8"
 
 	"github.com/taoqun8316/goblog/app/models/article"
 	"github.com/taoqun8316/goblog/pkg/logger"
 	"github.com/taoqun8316/goblog/pkg/route"
-	"github.com/taoqun8316/goblog/pkg/types"
+	"github.com/taoqun8316/goblog/pkg/view"
 	"gorm.io/gorm"
 )
 
@@ -20,67 +19,8 @@ type ArticlesController struct {
 type ArticlesFormData struct {
 	Title, Body string
 	URL         string
+	Article     article.Article
 	Errors      map[string]string
-}
-
-func (*ArticlesController) Index(w http.ResponseWriter, r *http.Request) {
-	articles, err := article.GetAll()
-	logger.LogError(err)
-
-	if err != nil {
-		logger.LogError(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, "500 服务器内部错误")
-	} else {
-		tmpl, err := template.ParseFiles("resources/views/articles/index.gohtml")
-		logger.LogError(err)
-
-		err = tmpl.Execute(w, articles)
-		logger.LogError(err)
-	}
-}
-
-func (*ArticlesController) Show(w http.ResponseWriter, r *http.Request) {
-	id := route.GetRouteVariable("id", r)
-	article, err := article.Get(id)
-
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprint(w, "404 文章未找到")
-		} else {
-			logger.LogError(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint(w, "500 服务器内部错误")
-		}
-	} else {
-		tmpl, err := template.New("show.gohtml").Funcs(template.FuncMap{
-			"RouteName2URL":  route.Name2URL,
-			"Uint64ToString": types.Uint64ToString,
-		}).ParseFiles("resources/views/articles/show.gohtml")
-		logger.LogError(err)
-
-		err = tmpl.Execute(w, article)
-		logger.LogError(err)
-	}
-}
-
-func (*ArticlesController) Create(w http.ResponseWriter, r *http.Request) {
-	storeURL := route.Name2URL("articles.store")
-	data := ArticlesFormData{
-		Title:  "",
-		Body:   "",
-		URL:    storeURL,
-		Errors: nil,
-	}
-	tmpl, err := template.ParseFiles("resources/views/articles/create.gohtml")
-	if err != nil {
-		logger.LogError(err)
-	}
-	err = tmpl.Execute(w, data)
-	if err != nil {
-		logger.LogError(err)
-	}
 }
 
 func validateArticleFormData(title string, body string) map[string]string {
@@ -100,6 +40,41 @@ func validateArticleFormData(title string, body string) map[string]string {
 	}
 
 	return errors
+}
+
+func (*ArticlesController) Index(w http.ResponseWriter, r *http.Request) {
+	articles, err := article.GetAll()
+	logger.LogError(err)
+
+	if err != nil {
+		logger.LogError(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "500 服务器内部错误")
+	} else {
+		view.Render(w, articles, "articles.index")
+	}
+}
+
+func (*ArticlesController) Show(w http.ResponseWriter, r *http.Request) {
+	id := route.GetRouteVariable("id", r)
+	article, err := article.Get(id)
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprint(w, "404 文章未找到")
+		} else {
+			logger.LogError(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, "500 服务器内部错误")
+		}
+	} else {
+		view.Render(w, article, "articles.show")
+	}
+}
+
+func (*ArticlesController) Create(w http.ResponseWriter, r *http.Request) {
+	view.Render(w, ArticlesFormData{}, "articles.create", "articles._form_field")
 }
 
 func (*ArticlesController) Store(w http.ResponseWriter, r *http.Request) {
@@ -122,23 +97,11 @@ func (*ArticlesController) Store(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprint(w, "创建文章失败，请联系管理员")
 		}
 	} else {
-		storeURL := route.Name2URL("articles.store")
-		data := ArticlesFormData{
+		view.Render(w, ArticlesFormData{
 			Title:  title,
 			Body:   body,
-			URL:    storeURL,
 			Errors: errors,
-		}
-
-		tmpl, err := template.New("create.gohtml").Funcs(template.FuncMap{}).ParseFiles("resources/views/articles/create.gohtml")
-		if err != nil {
-			logger.LogError(err)
-		}
-
-		err = tmpl.Execute(w, data)
-		if err != nil {
-			logger.LogError(err)
-		}
+		}, "articles.create", "articles._form_field")
 	}
 }
 
@@ -156,19 +119,12 @@ func (*ArticlesController) Edit(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprint(w, "500 服务器内部错误")
 		}
 	} else {
-		updateURL := route.Name2URL("articles.update", "id", id)
-		tmpl, err := template.ParseFiles("resources/views/articles/edit.gohtml")
-		logger.LogError(err)
-
-		data := ArticlesFormData{
-			Title:  article.Title,
-			Body:   article.Body,
-			URL:    updateURL,
-			Errors: nil,
-		}
-
-		err = tmpl.Execute(w, data)
-		logger.LogError(err)
+		view.Render(w, ArticlesFormData{
+			Title:   article.Title,
+			Body:    article.Body,
+			Article: article,
+			Errors:  nil,
+		}, "articles.edit", "articles._form_field")
 	}
 }
 
@@ -209,19 +165,11 @@ func (*ArticlesController) Update(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprint(w, "您没有做任何更改！")
 			}
 		} else {
-			updateURL := route.Name2URL("articles.update", "id", id)
-			data := ArticlesFormData{
+			view.Render(w, ArticlesFormData{
 				Title:  title,
 				Body:   body,
-				URL:    updateURL,
 				Errors: errors,
-			}
-
-			tmpl, err := template.ParseFiles("resources/views/articles/edit.gohtml")
-			logger.LogError(err)
-
-			err = tmpl.Execute(w, data)
-			logger.LogError(err)
+			}, "articles.edit", "articles._form_field")
 		}
 	}
 }
