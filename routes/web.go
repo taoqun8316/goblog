@@ -29,4 +29,10 @@ func RegisterWebRoutes(r *mux.Router) {
 	r.HandleFunc("/articles/{id:[0-9]+}/edit", ac.Edit).Methods("GET").Name("articles.edit")
 	r.HandleFunc("/articles/{id:[0-9]+}", ac.Update).Methods("POST").Name("articles.update")
 	r.HandleFunc("/articles/{id:[0-9]+}/delete", ac.Delete).Methods("POST").Name("articles.delete")
+
+	// 用户认证
+	auc := new(controllers.AuthController)
+	r.HandleFunc("/auth/register", auc.Register).Methods("GET").Name("auth.register")
+	r.HandleFunc("/auth/do-register", auc.DoRegister).Methods("POST").Name("auth.doregister")
+
 }

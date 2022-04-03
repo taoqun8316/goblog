@@ -35,6 +35,7 @@ require (
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/cobra v1.4.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/thedevsaddam/govalidator v1.9.10 // indirect
 	go.starlark.net v0.0.0-20220328144851-d1966c6b9fcd // indirect
 	golang.org/x/arch v0.0.0-20220401014709-5424468ecbac // indirect
 	golang.org/x/sys v0.0.0-20220330033206-e17cdc41300f // indirect
