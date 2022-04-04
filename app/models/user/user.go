@@ -4,6 +4,7 @@ import (
 	"github.com/taoqun8316/goblog/app/models"
 	"github.com/taoqun8316/goblog/pkg/logger"
 	"github.com/taoqun8316/goblog/pkg/model"
+	"github.com/taoqun8316/goblog/pkg/types"
 )
 
 // User 用户模型
@@ -24,4 +25,25 @@ func (user *User) Create() (int64, error) {
 		return 0, err
 	}
 	return result.RowsAffected, nil
+}
+
+func Get(idstr string) (User, error) {
+	var user User
+	id := types.StringToUint64(idstr)
+	if err := model.DB.First(&user, id).Error; err != nil {
+		return user, err
+	}
+	return user, nil
+}
+
+func GetByEmail(email string) (User, error) {
+	var user User
+	if err := model.DB.Where("email = ?", email).First(&user).Error; err != nil {
+		return user, err
+	}
+	return user, nil
+}
+
+func (user *User) ComparePassword(password string) bool {
+	return user.Password == password
 }

@@ -9,9 +9,7 @@ import (
 	"github.com/thedevsaddam/govalidator"
 )
 
-// 此方法会在初始化时执行
 func init() {
-	// not_exists:users,email
 	govalidator.AddCustomRule("not_exists", func(field string, rule string, message string, value interface{}) error {
 		rng := strings.Split(strings.TrimPrefix(rule, "not_exists:"), ",")
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/taoqun8316/goblog/app/models/user"
 	"github.com/taoqun8316/goblog/app/requests"
+	"github.com/taoqun8316/goblog/pkg/auth"
 	"github.com/taoqun8316/goblog/pkg/view"
 )
 
@@ -39,4 +40,30 @@ func (*AuthController) DoRegister(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprint(w, "创建用户失败，请联系管理员")
 		}
 	}
+}
+
+func (*AuthController) Login(w http.ResponseWriter, r *http.Request) {
+	view.RenderSimple(w, view.D{}, "auth.login")
+}
+
+func (*AuthController) DoLogin(w http.ResponseWriter, r *http.Request) {
+	email := r.PostFormValue("email")
+	password := r.PostFormValue("password")
+
+	if err := auth.Attempt(email, password); err == nil {
+		// 登录成功
+		http.Redirect(w, r, "/", http.StatusFound)
+	} else {
+		// 3. 失败，显示错误提示
+		view.RenderSimple(w, view.D{
+			"Error":    err.Error(),
+			"Email":    email,
+			"Password": password,
+		}, "auth.login")
+	}
+}
+
+func (*AuthController) Logout(w http.ResponseWriter, r *http.Request) {
+	auth.Logout()
+	http.Redirect(w, r, "/", http.StatusFound)
 }
