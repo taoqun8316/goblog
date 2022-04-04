@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/taoqun8316/goblog/app/models/article"
+	"github.com/taoqun8316/goblog/app/requests"
 	"github.com/taoqun8316/goblog/pkg/logger"
 	"github.com/taoqun8316/goblog/pkg/route"
 	"github.com/taoqun8316/goblog/pkg/view"
@@ -75,16 +76,14 @@ func (*ArticlesController) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (*ArticlesController) Store(w http.ResponseWriter, r *http.Request) {
-	title := r.PostFormValue("title")
-	body := r.PostFormValue("body")
-	errors := validateArticleFormData(title, body)
+	_article := article.Article{
+		Title: r.PostFormValue("title"),
+		Body:  r.PostFormValue("body"),
+	}
+	errors := requests.ValidateArticleForm(_article)
 
 	// 检查是否有错误
 	if len(errors) == 0 {
-		_article := article.Article{
-			Title: title,
-			Body:  body,
-		}
 		_article.Create()
 
 		if _article.ID > 0 {
@@ -95,8 +94,8 @@ func (*ArticlesController) Store(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		view.Render(w, view.D{
-			"Title":  title,
-			"Body":   body,
+			"Title":  _article.Title,
+			"Body":   _article.Body,
 			"Errors": errors,
 		}, "articles.create", "articles._form_field")
 	}
@@ -120,7 +119,7 @@ func (*ArticlesController) Edit(w http.ResponseWriter, r *http.Request) {
 			"Title":   article.Title,
 			"Body":    article.Body,
 			"Article": article,
-			"Errors":  make(map[string]string),
+			"Errors":  view.D{},
 		}, "articles.edit", "articles._form_field")
 	}
 }
@@ -139,13 +138,11 @@ func (*ArticlesController) Update(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprint(w, "500 服务器内部错误")
 		}
 	} else {
-		title := r.PostFormValue("title")
-		body := r.PostFormValue("body")
-		errors := validateArticleFormData(title, body)
+		_article.Title = r.PostFormValue("title")
+		_article.Body = r.PostFormValue("body")
+		errors := requests.ValidateArticleForm(_article)
 
 		if len(errors) == 0 {
-			_article.Title = title
-			_article.Body = body
 			rowsAffected, err := _article.Update()
 
 			if err != nil {
@@ -156,16 +153,16 @@ func (*ArticlesController) Update(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if rowsAffected > 0 {
-				showURL := route.Name2URL("articles.show", "id", id)
+				showURL := route.Name2URL("articles.show", "id", string(id))
 				http.Redirect(w, r, showURL, http.StatusFound)
 			} else {
 				fmt.Fprint(w, "您没有做任何更改！")
 			}
 		} else {
 			view.Render(w, view.D{
-				"Title":  title,
-				"Body":   body,
-				"Errors": make(map[string]string),
+				"Title":  _article.Title,
+				"Body":   _article.Body,
+				"Errors": errors,
 			}, "articles.edit", "articles._form_field")
 		}
 	}

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/taoqun8316/goblog/pkg/auth"
+	"github.com/taoqun8316/goblog/pkg/flash"
 	"github.com/taoqun8316/goblog/pkg/logger"
 	"github.com/taoqun8316/goblog/pkg/route"
 )
@@ -29,6 +30,8 @@ func RenderTemplate(w io.Writer, name string, data D, tplFiles ...string) {
 
 	// 1. 通用模板数据
 	data["isLogined"] = auth.Check()
+	data["loginUser"] = auth.User
+	data["flash"] = flash.All()
 
 	// 2. 生成模板文件
 	allFiles := getTemplateFiles(tplFiles...)

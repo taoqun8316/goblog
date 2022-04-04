@@ -7,6 +7,7 @@ import (
 	"github.com/taoqun8316/goblog/app/models/user"
 	"github.com/taoqun8316/goblog/app/requests"
 	"github.com/taoqun8316/goblog/pkg/auth"
+	"github.com/taoqun8316/goblog/pkg/flash"
 	"github.com/taoqun8316/goblog/pkg/view"
 )
 
@@ -34,6 +35,7 @@ func (*AuthController) DoRegister(w http.ResponseWriter, r *http.Request) {
 	} else {
 		_user.Create()
 		if _user.ID > 0 {
+			flash.Success("恭喜您注册成功！")
 			auth.Login(_user)
 			fmt.Fprint(w, "插入成功，ID 为"+_user.GetStringID())
 		} else {
@@ -52,8 +54,8 @@ func (*AuthController) DoLogin(w http.ResponseWriter, r *http.Request) {
 	password := r.PostFormValue("password")
 
 	if err := auth.Attempt(email, password); err == nil {
-		// 登录成功
-		http.Redirect(w, r, "/", http.StatusFound)
+		flash.Success("欢迎回来！")
+		http.Redirect(w, r, "/articles", http.StatusFound)
 	} else {
 		// 3. 失败，显示错误提示
 		view.RenderSimple(w, view.D{
@@ -65,6 +67,7 @@ func (*AuthController) DoLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (*AuthController) Logout(w http.ResponseWriter, r *http.Request) {
+	flash.Success("您已退出登录")
 	auth.Logout()
-	http.Redirect(w, r, "/", http.StatusFound)
+	http.Redirect(w, r, "/articles", http.StatusFound)
 }
