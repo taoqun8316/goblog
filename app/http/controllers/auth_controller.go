@@ -34,6 +34,7 @@ func (*AuthController) DoRegister(w http.ResponseWriter, r *http.Request) {
 	} else {
 		_user.Create()
 		if _user.ID > 0 {
+			auth.Login(_user)
 			fmt.Fprint(w, "插入成功，ID 为"+_user.GetStringID())
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)

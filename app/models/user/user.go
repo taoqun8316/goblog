@@ -4,6 +4,7 @@ import (
 	"github.com/taoqun8316/goblog/app/models"
 	"github.com/taoqun8316/goblog/pkg/logger"
 	"github.com/taoqun8316/goblog/pkg/model"
+	"github.com/taoqun8316/goblog/pkg/password"
 	"github.com/taoqun8316/goblog/pkg/types"
 )
 
@@ -44,6 +45,6 @@ func GetByEmail(email string) (User, error) {
 	return user, nil
 }
 
-func (user *User) ComparePassword(password string) bool {
-	return user.Password == password
+func (user *User) ComparePassword(_password string) bool {
+	return password.CheckHash(_password, user.Password)
 }
