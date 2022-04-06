@@ -5,6 +5,7 @@ import (
 	"github.com/taoqun8316/goblog/pkg/logger"
 	"github.com/taoqun8316/goblog/pkg/model"
 	"github.com/taoqun8316/goblog/pkg/password"
+	"github.com/taoqun8316/goblog/pkg/route"
 	"github.com/taoqun8316/goblog/pkg/types"
 )
 
@@ -47,4 +48,8 @@ func GetByEmail(email string) (User, error) {
 
 func (user *User) ComparePassword(_password string) bool {
 	return password.CheckHash(_password, user.Password)
+}
+
+func (user *User) Link() string {
+	return route.Name2URL("users.show", "id", user.GetStringID())
 }
