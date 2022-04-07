@@ -6,14 +6,17 @@ import (
 	"strconv"
 
 	"github.com/taoqun8316/goblog/app/models/article"
+	"github.com/taoqun8316/goblog/app/policies"
 	"github.com/taoqun8316/goblog/app/requests"
+	"github.com/taoqun8316/goblog/pkg/auth"
+	"github.com/taoqun8316/goblog/pkg/flash"
 	"github.com/taoqun8316/goblog/pkg/logger"
 	"github.com/taoqun8316/goblog/pkg/route"
 	"github.com/taoqun8316/goblog/pkg/view"
-	"gorm.io/gorm"
 )
 
 type ArticlesController struct {
+	BaseController
 }
 
 func (*ArticlesController) Index(w http.ResponseWriter, r *http.Request) {
@@ -31,22 +34,16 @@ func (*ArticlesController) Index(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (*ArticlesController) Show(w http.ResponseWriter, r *http.Request) {
+func (ac *ArticlesController) Show(w http.ResponseWriter, r *http.Request) {
 	id := route.GetRouteVariable("id", r)
 	article, err := article.Get(id)
 
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprint(w, "404 文章未找到")
-		} else {
-			logger.LogError(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint(w, "500 服务器内部错误")
-		}
+		ac.ResponseForSQLError(w, err)
 	} else {
 		view.Render(w, view.D{
-			"Article": article,
+			"Article":          article,
+			"CanModifyArticle": policies.CanModifyArticle(article),
 		}, "articles.show", "articles._article_meta")
 	}
 }
@@ -56,9 +53,11 @@ func (*ArticlesController) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (*ArticlesController) Store(w http.ResponseWriter, r *http.Request) {
+	currentUser := auth.User()
 	_article := article.Article{
-		Title: r.PostFormValue("title"),
-		Body:  r.PostFormValue("body"),
+		Title:  r.PostFormValue("title"),
+		Body:   r.PostFormValue("body"),
+		UserID: currentUser.ID,
 	}
 	errors := requests.ValidateArticleForm(_article)
 
@@ -81,97 +80,91 @@ func (*ArticlesController) Store(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (*ArticlesController) Edit(w http.ResponseWriter, r *http.Request) {
+func (ac *ArticlesController) Edit(w http.ResponseWriter, r *http.Request) {
 	id := route.GetRouteVariable("id", r)
 	article, err := article.Get(id)
 
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprint(w, "404 文章未找到")
-		} else {
-			logger.LogError(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint(w, "500 服务器内部错误")
-		}
+		ac.ResponseForSQLError(w, err)
 	} else {
-		view.Render(w, view.D{
-			"Title":   article.Title,
-			"Body":    article.Body,
-			"Article": article,
-			"Errors":  view.D{},
-		}, "articles.edit", "articles._form_field")
-	}
-}
-
-func (*ArticlesController) Update(w http.ResponseWriter, r *http.Request) {
-	id := route.GetRouteVariable("id", r)
-	_article, err := article.Get(id)
-
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprint(w, "404 文章未找到")
-		} else {
-			logger.LogError(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint(w, "500 服务器内部错误")
-		}
-	} else {
-		_article.Title = r.PostFormValue("title")
-		_article.Body = r.PostFormValue("body")
-		errors := requests.ValidateArticleForm(_article)
-
-		if len(errors) == 0 {
-			rowsAffected, err := _article.Update()
-
-			if err != nil {
-				logger.LogError(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				fmt.Fprint(w, "500 服务器内部错误")
-				return
-			}
-
-			if rowsAffected > 0 {
-				showURL := route.Name2URL("articles.show", "id", string(id))
-				http.Redirect(w, r, showURL, http.StatusFound)
-			} else {
-				fmt.Fprint(w, "您没有做任何更改！")
-			}
+		if !policies.CanModifyArticle(article) {
+			ac.ResponseForUnauthorized(w, r)
 		} else {
 			view.Render(w, view.D{
-				"Title":  _article.Title,
-				"Body":   _article.Body,
-				"Errors": errors,
+				"Title":   article.Title,
+				"Body":    article.Body,
+				"Article": article,
+				"Errors":  view.D{},
 			}, "articles.edit", "articles._form_field")
 		}
 	}
 }
 
-func (*ArticlesController) Delete(w http.ResponseWriter, r *http.Request) {
+func (ac *ArticlesController) Update(w http.ResponseWriter, r *http.Request) {
 	id := route.GetRouteVariable("id", r)
 	_article, err := article.Get(id)
 
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprint(w, "404 文章未找到")
-		} else {
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint(w, "500 服务器内部错误")
-		}
+		ac.ResponseForSQLError(w, err)
 	} else {
-		rowsAffected, err := _article.Delete()
-		if err != nil {
-			logger.LogError(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint(w, "500 服务器内部错误")
+		if !policies.CanModifyArticle(_article) {
+			ac.ResponseForUnauthorized(w, r)
 		} else {
-			if rowsAffected > 0 {
-				http.Redirect(w, r, route.Name2URL("articles.index"), http.StatusFound)
+			_article.Title = r.PostFormValue("title")
+			_article.Body = r.PostFormValue("body")
+			errors := requests.ValidateArticleForm(_article)
+
+			if len(errors) == 0 {
+				rowsAffected, err := _article.Update()
+
+				if err != nil {
+					logger.LogError(err)
+					w.WriteHeader(http.StatusInternalServerError)
+					fmt.Fprint(w, "500 服务器内部错误")
+					return
+				}
+
+				if rowsAffected > 0 {
+					showURL := route.Name2URL("articles.show", "id", string(id))
+					http.Redirect(w, r, showURL, http.StatusFound)
+				} else {
+					fmt.Fprint(w, "您没有做任何更改！")
+				}
 			} else {
-				w.WriteHeader(http.StatusNotFound)
-				fmt.Fprint(w, "404 文章未找到")
+				view.Render(w, view.D{
+					"Title":  _article.Title,
+					"Body":   _article.Body,
+					"Errors": errors,
+				}, "articles.edit", "articles._form_field")
+			}
+		}
+	}
+}
+
+func (ac *ArticlesController) Delete(w http.ResponseWriter, r *http.Request) {
+	id := route.GetRouteVariable("id", r)
+	_article, err := article.Get(id)
+
+	if err != nil {
+		ac.ResponseForSQLError(w, err)
+	} else {
+		if !policies.CanModifyArticle(_article) {
+			flash.Warning("您没有权限执行此操作！")
+			http.Redirect(w, r, "/", http.StatusFound)
+		} else {
+
+			rowsAffected, err := _article.Delete()
+			if err != nil {
+				logger.LogError(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				fmt.Fprint(w, "500 服务器内部错误")
+			} else {
+				if rowsAffected > 0 {
+					http.Redirect(w, r, route.Name2URL("articles.index"), http.StatusFound)
+				} else {
+					w.WriteHeader(http.StatusNotFound)
+					fmt.Fprint(w, "404 文章未找到")
+				}
 			}
 		}
 	}
