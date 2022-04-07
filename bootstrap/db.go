@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/taoqun8316/goblog/app/models/article"
+	"github.com/taoqun8316/goblog/app/models/category"
 	"github.com/taoqun8316/goblog/app/models/user"
 	"github.com/taoqun8316/goblog/pkg/config"
 	"github.com/taoqun8316/goblog/pkg/model"
@@ -32,5 +33,6 @@ func migration(db *gorm.DB) {
 	db.AutoMigrate(
 		&user.User{},
 		&article.Article{},
+		&category.Category{},
 	)
 }

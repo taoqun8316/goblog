@@ -19,17 +19,16 @@ type ArticlesController struct {
 	BaseController
 }
 
-func (*ArticlesController) Index(w http.ResponseWriter, r *http.Request) {
-	articles, err := article.GetAll()
+func (ac *ArticlesController) Index(w http.ResponseWriter, r *http.Request) {
+	articles, pagerData, err := article.GetAll(r, 2)
 	logger.LogError(err)
 
 	if err != nil {
-		logger.LogError(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, "500 服务器内部错误")
+		ac.ResponseForSQLError(w, err)
 	} else {
 		view.Render(w, view.D{
-			"Articles": articles,
+			"Articles":  articles,
+			"PagerData": pagerData,
 		}, "articles.index", "articles._article_meta")
 	}
 }

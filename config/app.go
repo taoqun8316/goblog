@@ -4,6 +4,7 @@ import "github.com/taoqun8316/goblog/pkg/config"
 
 func init() {
 	config.Add("app", config.StrMap{
+		"url": config.Env("APP_URL", "http://localhost:3000"),
 
 		"name": config.Env("APP_NAME", "GoBlog"),
 
